@@ -1,25 +1,19 @@
-import logo from './logo.svg';
-import './App.css';
+import { fromLonLat } from "ol/proj";
+import React from "react";
+import { Map } from "./Map";
+import MyLayerSwitcher from "./LayerSwitcher";
+import WFST from "./WFST";
+import "bootstrap/dist/css/bootstrap.min.css";
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <Map zoom={15} center={[677332.25142889, 818063.76402935]}>
+        <MyLayerSwitcher />
+        <WFST />
+      </Map>
     </div>
   );
-}
+};
 
 export default App;
