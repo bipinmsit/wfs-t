@@ -1,4 +1,3 @@
-import { fromLonLat } from "ol/proj";
 import React from "react";
 import { Map } from "./Map";
 import MyLayerSwitcher from "./LayerSwitcher";

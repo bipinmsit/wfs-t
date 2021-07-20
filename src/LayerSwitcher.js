@@ -1,7 +1,8 @@
-import React, { useContext, useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { MapContext } from "./Map";
 import LayerSwitcher from "ol-layerswitcher";
 import "ol-layerswitcher/dist/ol-layerswitcher.css";
+import "./scroll.css";
 
 const MyLayerSwitcher = () => {
   const { map } = useContext(MapContext);
