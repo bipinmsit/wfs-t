@@ -1,15 +1,18 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import { MapContext } from "./Map";
 import { Group, Vector as VectorLayer } from "ol/layer";
 import { Vector as VectorSource } from "ol/source";
-import { GeoJSON } from "ol/format";
+import { GeoJSON, WFS } from "ol/format";
 import { Select, Modify, Draw, Snap } from "ol/interaction";
 import { Fill, Stroke, Circle, Style } from "ol/style";
+import { Modal, Button } from "react-bootstrap";
+import GML3 from "ol/format/GML3";
 
 const LocalWFSLayers = () => {
   const [layerName, setLayerName] = useState([]);
   const [selectedLayer, setSelectedLayer] = useState("");
   const [selectedGeom, setSelectedGeom] = useState("");
+  const [showModal, setShowModal] = useState(false);
   const { map } = useContext(MapContext);
 
   useEffect(() => {
@@ -48,26 +51,72 @@ const LocalWFSLayers = () => {
       return;
     }
 
-    const source = new VectorSource({ wrapX: false });
-    const vector = new VectorLayer({
-      source: source,
+    const drawSource = new VectorSource({ wrapX: false });
+    const drawVector = new VectorLayer({
+      source: drawSource,
     });
 
-    let draw = new Draw({
-      source: source,
-      type: selectedGeom,
+    let draw;
+    if (selectedGeom !== "select_geom" && selectedGeom !== "None") {
+      draw = new Draw({
+        source: drawSource,
+        type: selectedGeom,
+      });
+    }
+
+    // console.log(saveButton.current);
+
+    draw.on("drawend", async (e) => {
+      // setShowModal(true);
+      const layerFeature = e.feature;
+      console.log(layerFeature);
+      console.log(layerFeature.getGeometry());
+
+      const wfs = new WFS({
+        featureNS: "custom",
+        featureType: selectedLayer,
+        geometryName: "geom",
+        version: "1.1.0",
+      });
+      const node1 = wfs.writeTransaction([layerFeature], null, null, {
+        gmlOptions: {
+          featureNS: "http://custom",
+          featurePrefix: "custom",
+          featureType: selectedLayer,
+          srsName: "EPSG:2260",
+        },
+      });
+
+      console.log(new XMLSerializer().serializeToString(node1));
+
+      await fetch("http://localhost:8080/geoserver/wfs", {
+        method: "POST",
+        headers: new Headers({
+          "Content-Type": "text/xml",
+        }),
+        body: new XMLSerializer().serializeToString(node1),
+      });
+
+      console.log("Posting data to geoserver");
     });
 
-    const snap = new Snap({ source: source });
+    const snap = new Snap({ source: drawSource });
 
     const mapInteraction = () => {
       if (selectedGeom !== "select_geom" && selectedGeom !== "None") {
         map.addInteraction(draw);
         map.addInteraction(snap);
+      } else {
+        vector.getSource().clear();
+        // map.removeLayer(vector);
       }
     };
     mapInteraction();
-    map.addLayer(vector);
+    map.addLayer(drawVector);
+
+    document.getElementById("undo").addEventListener("click", () => {
+      draw.removeLastPoint();
+    });
 
     return () => map.removeInteraction(draw);
   }, [selectedGeom]);
@@ -176,7 +225,7 @@ const LocalWFSLayers = () => {
             );
           })}
         </select>
-        <input type="button" value="Edit" id="editButton" disabled />
+        <input type="button" value="Start Edit" id="editButton" disabled />
       </div>
       &nbsp;
       <div>
@@ -195,6 +244,18 @@ const LocalWFSLayers = () => {
           <option value="None">None</option>
         </select>
         <input type="button" value="Undo" id="undo" disabled />
+      </div>
+      <div>
+        <Modal show={showModal}>
+          <Modal.Body>
+            <p>Do you want to save features ?</p>
+          </Modal.Body>
+
+          <Modal.Footer>
+            <Button variant="secondary">Cancel</Button>
+            <Button variant="primary">Save changes</Button>
+          </Modal.Footer>
+        </Modal>
       </div>
     </div>
   );
